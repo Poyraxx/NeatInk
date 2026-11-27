@@ -82,3 +82,7 @@ Project layout:
 
 - Handwriting recognition: [Google ML Kit Digital Ink Recognition](https://developers.google.com/ml-kit/vision/digital-ink-recognition)
 - Fonts (SIL Open Font License 1.1): Kalam, Caveat, Patrick Hand, Architects Daughter, Shadows Into Light Two, Sriracha and Dancing Script, from [Google Fonts](https://fonts.google.com). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+## License
+
+The app's source code is released under the [MIT License](LICENSE). Bundled fonts keep their own SIL Open Font License, and ML Kit is subject to Google's terms. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
