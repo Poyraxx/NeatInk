@@ -35,6 +35,12 @@ Requirements: Android 10 (API 29) or newer. Designed for tablets; it also runs o
 - **Cut question**: select a question on a PDF page. You can copy it to the clipboard, send it to a new note, or append it to the current note.
 - **Export as PDF** (share or save) with all your ink, including the extended margins.
 
+### Study tools
+- **Mistake notebook**: cut a question you got wrong with ✂ Cut question, then choose **Add to mistakes**. The question is saved *without* your solution, tagged with a subject and topic, and linked to its source page. **Review** shows open questions one by one: mark one as learned, or keep it for next time. You can also jump to the source page or solve it again in a new note.
+- **Exam mode** (⏱): a stopwatch with an optional time limit, an answer sheet (A–E or A–D), and an answer key that you can tap in or paste (`ABCDA…`). It counts correct, wrong and blank answers and calculates the **net score** (4 wrong cancel 1 right for YKS, 3 for LGS, or no penalty). There are TYT, AYT and LGS presets. One tap sends all wrong answers to the mistake notebook.
+- **Hide solutions → solve again** (👁): hide everything you wrote and solve the page again on a clean copy. When you finish, keep or discard the new attempt; your old solution comes back either way.
+- **Backup & restore** (Settings ⚙): save all notes, PDFs and the mistake notebook to one `.zip` file. Restoring adds the missing notes and never overwrites existing ones.
+
 ### Stylus buttons (Xiaomi / Redmi pens)
 - **Tap** the lower button for the next pen and the upper button for the previous pen.
 - **Hold** either button to erase while held, just like Xiaomi Notes.

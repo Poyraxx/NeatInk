@@ -42,6 +42,8 @@ import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.School
+import kotlinx.coroutines.launch
 import androidx.compose.material.icons.outlined.TextSnippet
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -80,6 +82,7 @@ fun HomeScreen(
     onNewText: (folder: String) -> Unit,
     onImportPdf: (folder: String) -> Unit,
     onChanged: () -> Unit,
+    onOpenMistakes: () -> Unit,
 ) {
     val store = AppState.store
     var query by remember { mutableStateOf("") }
@@ -89,6 +92,28 @@ fun HomeScreen(
     var moveDialog by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     var settingsDialog by remember { mutableStateOf(false) }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    fun toast(s: String) = android.widget.Toast.makeText(ctx, s, android.widget.Toast.LENGTH_LONG).show()
+    val backupLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+        if (uri != null) scope.launch {
+            val ok = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching { ctx.contentResolver.openOutputStream(uri)!!.use { com.xaser.note.data.Backup.export(store, it) } }.isSuccess
+            }
+            toast(if (ok) L("Yedek kaydedildi", "Backup saved") else L("Yedek alınamadı", "Backup failed"))
+        }
+    }
+    val restoreLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) scope.launch {
+            val r = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching { ctx.contentResolver.openInputStream(uri)!!.use { com.xaser.note.data.Backup.import(store, AppState.mistakes, it, ctx.cacheDir) } }
+            }
+            r.onSuccess { toast(L("${it.notes} not ve ${it.mistakes} hata sorusu geri yüklendi", "Restored ${it.notes} notes and ${it.mistakes} mistakes")); onChanged() }
+             .onFailure { toast(L("Geri yüklenemedi: ", "Restore failed: ") + (it.message ?: "")) }
+        }
+    }
     val selected = remember { mutableStateListOf<String>() }
     val selecting = selected.isNotEmpty()
 
@@ -137,6 +162,17 @@ fun HomeScreen(
                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 22.dp, vertical = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically,
             ) {
+                // Hata defteri girişi
+                Row(
+                    Modifier.clip(RoundedCornerShape(18.dp)).background(Color(0xFFFFE0B2))
+                        .combinedClickable(onClick = onOpenMistakes).padding(horizontal = 14.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Outlined.School, null, tint = AccentDark, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    val open = AppState.mistakes.openCount
+                    Text(L("Hata Defteri", "Mistakes") + if (open > 0) " ($open)" else "", color = TextPrimary, fontSize = 15.sp)
+                }
                 FolderChip(L("Tümü", "All"), folder.isEmpty()) { folder = "" }
                 store.folders.forEach { f -> FolderChip(f, folder == f) { folder = f } }
                 IconButton(onClick = { newFolderDialog = true }) { Icon(Icons.Outlined.CreateNewFolder, L("Yeni klasör", "New folder"), tint = TextSecondary) }
@@ -201,7 +237,11 @@ fun HomeScreen(
         }
     }
 
-    if (settingsDialog) SettingsDialog { settingsDialog = false }
+    if (settingsDialog) SettingsDialog(
+        onDismiss = { settingsDialog = false },
+        onBackup = { settingsDialog = false; backupLauncher.launch("NeatInk-" + java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date()) + ".zip") },
+        onRestore = { settingsDialog = false; restoreLauncher.launch(arrayOf("application/zip", "application/octet-stream", "application/x-zip-compressed")) },
+    )
     if (newFolderDialog) {
         NameDialog(L("Yeni klasör", "New folder"), "", { newFolderDialog = false }) { name ->
             if (name.isNotBlank() && name !in store.folders) { store.folders.add(name.trim()); store.saveIndex() }

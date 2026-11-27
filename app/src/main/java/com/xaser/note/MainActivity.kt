@@ -83,6 +83,11 @@ private fun App(incomingPdf: Uri?, consumeIncoming: () -> Unit) {
     var open by remember { mutableStateOf<NoteMeta?>(null) }
     var version by remember { mutableIntStateOf(0) }
     var pendingFolder by remember { mutableStateOf("") }
+    var mistakesOpen by remember { mutableStateOf(false) }
+    /** Not açılınca kaydırılacak sayfa (hata defterinden "kaynağa git") */
+    var openPage by remember { mutableIntStateOf(-1) }
+    /** Not kapanınca hata defterine geri dön */
+    var returnToMistakes by remember { mutableStateOf(false) }
     var importing by remember { mutableStateOf(false) }
 
     fun importPdf(uri: Uri, folder: String) {
@@ -112,7 +117,31 @@ private fun App(incomingPdf: Uri?, consumeIncoming: () -> Unit) {
     }
 
     val current = open
-    if (current == null) {
+    if (current == null && mistakesOpen) {
+        com.xaser.note.ui.MistakeScreen(
+            onBack = { mistakesOpen = false; version++ },
+            onOpenSource = { id, page ->
+                val m = store.get(id)
+                if (m == null) Toast.makeText(context, L("Kaynak not silinmiş", "The source note was deleted"), Toast.LENGTH_SHORT).show()
+                else { openPage = page; returnToMistakes = true; mistakesOpen = false; open = m }
+            },
+            onSolve = { mk ->
+                // Soruyu yeni bir el yazısı notuna koy
+                val m = NoteMeta(title = listOf(mk.subject, mk.topic).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { L("Soru", "Question") },
+                    type = NoteType.INK)
+                store.add(m)
+                val name = store.newImageName()
+                AppState.mistakes.imageFile(mk).copyTo(store.imageFile(m.id, name), overwrite = true)
+                val o = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                android.graphics.BitmapFactory.decodeFile(store.imageFile(m.id, name).absolutePath, o)
+                val w = 900f; val h = w * o.outHeight / maxOf(1, o.outWidth)
+                val page = com.xaser.note.model.Page(baseHeight = maxOf(com.xaser.note.model.A4_HEIGHT, h + 600f))
+                page.images.add(com.xaser.note.model.ImageItem(name, 50f, 50f, w, h))
+                store.saveDoc(m.id, com.xaser.note.model.InkDocument(mutableListOf(page)))
+                openPage = -1; returnToMistakes = true; mistakesOpen = false; open = m
+            },
+        )
+    } else if (current == null) {
         HomeScreen(
             version = version,
             onOpen = { open = it },
@@ -120,16 +149,18 @@ private fun App(incomingPdf: Uri?, consumeIncoming: () -> Unit) {
             onNewText = { f -> val m = NoteMeta(type = NoteType.TEXT, folder = f); store.add(m); open = m },
             onImportPdf = { f -> pendingFolder = f; pickPdf.launch(arrayOf("application/pdf")) },
             onChanged = { version++ },
+            onOpenMistakes = { mistakesOpen = true },
         )
     } else key(current.id) {
         val back: () -> Unit = {
             // Boş metin notlarını tutma
             if (current.type == NoteType.TEXT && current.title.isBlank() && current.body.isBlank()) store.delete(current.id)
-            open = null; version++
+            open = null; openPage = -1; version++
+            if (returnToMistakes) { returnToMistakes = false; mistakesOpen = true }
         }
         when (current.type) {
             NoteType.TEXT -> TextNoteScreen(current, back)
-            else -> EditorScreen(current, back) { open = it; version++ }
+            else -> EditorScreen(current, openPage, back) { open = it; openPage = -1; version++ }
         }
     }
 }

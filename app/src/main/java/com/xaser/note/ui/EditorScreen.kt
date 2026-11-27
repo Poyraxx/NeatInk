@@ -45,6 +45,9 @@ import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.Crop
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FontDownload
+import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.HighlightAlt
 import androidx.compose.material.icons.outlined.Image
@@ -119,7 +122,7 @@ private const val PREFS = "editor"
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun EditorScreen(meta: NoteMeta, onBack: () -> Unit, onOpenNote: (NoteMeta) -> Unit) {
+fun EditorScreen(meta: NoteMeta, initialPage: Int = -1, onBack: () -> Unit, onOpenNote: (NoteMeta) -> Unit) {
     val context = LocalContext.current
     val store = AppState.store
     val renderer = AppState.renderer
@@ -147,6 +150,9 @@ fun EditorScreen(meta: NoteMeta, onBack: () -> Unit, onOpenNote: (NoteMeta) -> U
     /** Düzeltilen yazıların yazı tipi (✨ simgesine basılı tutunca seçilir) */
     var fixFont by remember { mutableStateOf(prefs.getString("fixFont", NoteFonts.DEFAULT_FIX)!!) }
     var marginDialog by remember { mutableStateOf(false) }
+    var examOpen by remember { mutableStateOf(false) }
+    var retryEndDialog by remember { mutableStateOf(false) }
+    var mistakeCrop by remember { mutableStateOf<Pair<Int, RectF>?>(null) }
     var saveJob by remember { mutableStateOf<Job?>(null) }
 
     val pdfCache = remember {
@@ -245,9 +251,13 @@ fun EditorScreen(meta: NoteMeta, onBack: () -> Unit, onOpenNote: (NoteMeta) -> U
         // Xiaomi: not açıkken kalem tuşları sisteme değil bize gelsin (basılı tut = silgi)
         com.xaser.note.ink.XiaomiPenKeys.enable(context)
         pageInfo = 0 to doc.pages.size
+        // Hata defterinden "kaynağa git": ilgili sayfaya kaydır
+        if (initialPage >= 0) view.post { view.scrollToPage(initialPage) }
         // Otomatik düzeltme açıksa modeli hemen ısıt: ilk düzeltme beklemesin
         if (view.autoBeautify) recognizer.warmUp()
         onDispose {
+            // Tekrar çözümü açık kaldıysa çizilenleri kaybetme
+            view.endRetry(keep = true)
             com.xaser.note.ink.XiaomiPenKeys.disable(context)
             saveJob?.cancel()
             savePrefs()
@@ -373,6 +383,19 @@ fun EditorScreen(meta: NoteMeta, onBack: () -> Unit, onOpenNote: (NoteMeta) -> U
                 ToolButton(Icons.Outlined.Image, L("Resim", "Image"), false) {
                     pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                 }
+                Spacer(Modifier.width(6.dp))
+                // Çözümleri gizle → temiz sayfada tekrar çöz
+                ToolButton(if (view.hideInk) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                    L("Çözümleri gizle", "Hide solutions"), view.hideInk) {
+                    if (!view.hideInk) {
+                        view.startRetry()
+                        toast(L("Çözümler gizlendi — temiz sayfada tekrar çöz", "Solutions hidden — solve again on a clean page"))
+                    } else if (view.hasRetryInk()) retryEndDialog = true
+                    else view.endRetry(keep = true)
+                    ui++
+                }
+                // Deneme modu: süre + optik + net
+                ToolButton(Icons.Outlined.Timer, L("Deneme modu", "Exam mode"), examOpen) { examOpen = !examOpen }
                 if (!InkClipboard.isEmpty) ToolButton(Icons.Outlined.ContentPaste, L("Yapıştır", "Paste"), false) {
                     view.paste { src ->
                         val name = store.newImageName(); src.copyTo(store.imageFile(meta.id, name), true); name
@@ -405,6 +428,16 @@ fun EditorScreen(meta: NoteMeta, onBack: () -> Unit, onOpenNote: (NoteMeta) -> U
         // ---- Tuval ----
         Box(Modifier.weight(1f).fillMaxWidth()) {
             AndroidView({ view }, Modifier.fillMaxSize())
+
+            if (view.hideInk) {
+                Text(
+                    L("Tekrar çözüm modu — eski çözümler gizli", "Re-solve mode — old solutions hidden"),
+                    color = Color.White, fontSize = 13.sp,
+                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 10.dp)
+                        .clip(RoundedCornerShape(14.dp)).background(Color(0xCC1565C0)).padding(horizontal = 14.dp, vertical = 6.dp),
+                )
+            }
+            if (examOpen) ExamPanel(view, meta, { examOpen = false }, Modifier.align(Alignment.CenterEnd))
 
             // Sayfa göstergesi
             Text(
@@ -459,6 +492,27 @@ fun EditorScreen(meta: NoteMeta, onBack: () -> Unit, onOpenNote: (NoteMeta) -> U
     }
 
     // ================= Diyaloglar =================
+    mistakeCrop?.let { (pi, rect) ->
+        SubjectDialog(L("Hata defterine ekle", "Add to mistakes"), prefs.getString("lastSubject", "") ?: "", "", { mistakeCrop = null }) { subject, topic ->
+            // Sorunun temiz hali (senin çözümün olmadan)
+            val bmp = view.renderRegion(pi, rect, includeInk = false)
+            AppState.mistakes.add(bmp, subject, topic, meta.id, meta.title, pi)
+            prefs.edit().putString("lastSubject", subject).apply()
+            mistakeCrop = null
+            toast(L("Hata defterine eklendi", "Added to mistakes"))
+        }
+    }
+
+    if (retryEndDialog) {
+        AlertDialog(
+            onDismissRequest = { retryEndDialog = false },
+            title = { Text(L("Tekrar çözüm bitti", "Re-solve finished")) },
+            text = { Text(L("Gizliyken yazdığın yeni çözüm ne olsun? Eski çözümlerin geri gelecek.", "What should happen to the new solution you wrote? Your old solutions will come back.")) },
+            confirmButton = { TextButton({ view.endRetry(keep = true); retryEndDialog = false; ui++ }) { Text(L("Sakla", "Keep"), color = Accent) } },
+            dismissButton = { TextButton({ view.endRetry(keep = false); retryEndDialog = false; ui++ }) { Text(L("Sil", "Discard"), color = Color(0xFFD32F2F)) } },
+        )
+    }
+
     crop?.let { (pi, rect) ->
         AlertDialog(
             onDismissRequest = { crop = null; view.clearCrop() },
@@ -466,6 +520,10 @@ fun EditorScreen(meta: NoteMeta, onBack: () -> Unit, onOpenNote: (NoteMeta) -> U
             text = { Text(L("Bu soruyu/bölgeyi ne yapmak istersin?", "What do you want to do with this question/area?")) },
             confirmButton = {
                 Column(horizontalAlignment = Alignment.End) {
+                    TextButton({
+                        mistakeCrop = pi to RectF(rect)
+                        crop = null; view.clearCrop()
+                    }) { Text(L("Hata defterine ekle", "Add to mistakes"), color = AccentDark, fontWeight = FontWeight.SemiBold) }
                     TextButton({
                         val bmp = view.renderRegion(pi, rect)
                         val name = store.saveBitmap(meta.id, bmp)

@@ -42,7 +42,7 @@ fun openUrl(ctx: android.content.Context, url: String) {
 
 /** Ayarlar: dil seçimi, sürüm, GitHub sayfası */
 @Composable
-fun SettingsDialog(onDismiss: () -> Unit) {
+fun SettingsDialog(onDismiss: () -> Unit, onBackup: () -> Unit, onRestore: () -> Unit) {
     val ctx = LocalContext.current
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -65,6 +65,15 @@ fun SettingsDialog(onDismiss: () -> Unit) {
                     }
                 }
                 Spacer(Modifier.height(14.dp))
+                Text(L("Yedekleme", "Backup"), fontWeight = FontWeight.SemiBold)
+                Text(L("Tüm notlar, PDF'ler ve hata defteri tek bir .zip dosyasına kaydedilir. Geri yüklerken cihazdaki notlar silinmez.",
+                    "All notes, PDFs and mistakes are saved to one .zip file. Restoring never deletes notes on this device."),
+                    color = TextSecondary, fontSize = 13.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onBackup) { Text(L("Yedekle", "Back up"), color = AccentDark) }
+                    TextButton(onRestore) { Text(L("Geri yükle", "Restore"), color = AccentDark) }
+                }
+                Spacer(Modifier.height(8.dp))
                 Text(L("Sürüm", "Version") + " " + UpdateChecker.currentVersionName(ctx), color = TextSecondary, fontSize = 14.sp)
                 Text(
                     "GitHub: github.com/Poyraxx/NeatInk", color = AccentDark, fontSize = 14.sp,

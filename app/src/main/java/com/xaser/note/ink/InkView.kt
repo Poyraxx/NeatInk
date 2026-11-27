@@ -290,6 +290,45 @@ class InkView(
     }
 
     private fun markDirty(p: Page) { dirty.add(p) }
+
+    // ---- Çözümleri gizle → tekrar çöz ----
+    /** true iken eski çizgi ve yazılar gizlenir; yeni çizilenler "retry" olarak işaretlenir */
+    var hideInk = false
+        private set
+
+    private fun vis(s: Stroke) = !hideInk || s.retry
+    private fun vis(t: TextItem) = !hideInk || t.retry
+
+    fun startRetry() {
+        if (hideInk) return
+        clearSelection()
+        hideInk = true
+        markAllDirty(); invalidate()
+    }
+
+    /** Tekrar çözümünü bitir: keep=false ise gizliyken çizilenleri siler */
+    fun endRetry(keep: Boolean) {
+        if (!hideInk) return
+        for (p in doc.pages) {
+            val rs = p.strokes.filter { it.retry }; val rt = p.texts.filter { it.retry }
+            if (rs.isEmpty() && rt.isEmpty()) continue
+            if (!keep) { snapshot(p); p.strokes.removeAll(rs.toSet()); p.texts.removeAll(rt.toSet()) }
+            else { rs.forEach { it.retry = false }; rt.forEach { it.retry = false } }
+        }
+        hideInk = false
+        clearSelection()
+        markAllDirty(); invalidate(); commit()
+    }
+
+    fun hasRetryInk() = doc.pages.any { p -> p.strokes.any { it.retry } || p.texts.any { it.retry } }
+
+    private fun drawVisible(c: Canvas, page: Page) {
+        if (!hideInk) { renderer.drawPage(c, page, noteDir); return }
+        renderer.drawTemplate(c, page)
+        renderer.drawImages(c, page, noteDir)
+        renderer.drawStrokes(c, page.strokes.filter { it.retry })
+        renderer.drawTexts(c, page.texts.filter { it.retry })
+    }
     private fun markAllDirty() { dirty.addAll(doc.pages) }
 
     // ---- sayfa işlemleri ----
@@ -437,13 +476,13 @@ class InkView(
                 node.setPosition(0, 0, page.width.toInt() + 1, page.height.toInt() + 1)
                 node.clipToBounds = false
                 val rc = node.beginRecording()
-                renderer.drawPage(rc, page, noteDir)
+                drawVisible(rc, page)
                 node.endRecording()
                 dirty.remove(page)
             }
             c.drawRenderNode(node)
         } else {
-            renderer.drawPage(c, page, noteDir)
+            drawVisible(c, page)
             dirty.add(page)
         }
     }
@@ -859,6 +898,7 @@ class InkView(
                     }
                     val page = doc.pages[activePage]
                     snapshot(page)
+                    if (hideInk) s.retry = true
                     page.strokes.add(s)
                     markDirty(page)
                     if (autoBeautify && !snapped && tool == Tool.PEN && penType != PenType.HIGHLIGHTER) {
@@ -929,18 +969,18 @@ class InkView(
         val r = eraserSize / 2 / scale
         var changed = false
         // metin kutuları her iki modda da bütün olarak silinir
-        val tHit = page.texts.filter { renderer.textBounds(it).contains(x, y) }
+        val tHit = page.texts.filter { vis(it) && renderer.textBounds(it).contains(x, y) }
         if (tHit.isNotEmpty()) { snapshot(page); page.texts.removeAll(tHit.toSet()); changed = true }
         if (eraserMode == EraserMode.STROKE) {
-            val hit = page.strokes.filter { strokeHits(it, x, y, r) }
+            val hit = page.strokes.filter { vis(it) && strokeHits(it, x, y, r) }
             if (hit.isNotEmpty()) { snapshot(page); page.strokes.removeAll(hit.toSet()); changed = true }
         } else {
             val out = ArrayList<Stroke>(page.strokes.size)
             var any = false
             for (s in page.strokes) {
                 val b = s.bounds()
-                if (x + r < b[0] || x - r > b[2] || y + r < b[1] || y - r > b[3]) { out.add(s); continue }
-                val pieces = splitStroke(s, x, y, r + s.width / 2)
+                if (!vis(s) || x + r < b[0] || x - r > b[2] || y + r < b[1] || y - r > b[3]) { out.add(s); continue }
+                val pieces = splitStroke(s, x, y, r + s.width / 2)?.onEach { it.retry = s.retry }
                 if (pieces == null) out.add(s) else { any = true; out.addAll(pieces) }
             }
             if (any) { snapshot(page); page.strokes.clear(); page.strokes.addAll(out); changed = true }
@@ -1012,22 +1052,23 @@ class InkView(
         if (len < 30f) {
             // dokunma: altındaki nesneyi seç
             val x = pts[0]; val y = pts[1]
-            page.texts.lastOrNull { renderer.textBounds(it).contains(x, y) }?.let { sel.texts.add(it) }
+            page.texts.lastOrNull { vis(it) && renderer.textBounds(it).contains(x, y) }?.let { sel.texts.add(it) }
                 ?: page.images.lastOrNull { RectF(it.x, it.y, it.x + it.w, it.y + it.h).contains(x, y) }?.let { sel.images.add(it) }
-                ?: page.strokes.lastOrNull { strokeHits(it, x, y, 12f / scale) }?.let { sel.strokes.add(it) }
+                ?: page.strokes.lastOrNull { vis(it) && strokeHits(it, x, y, 12f / scale) }?.let { sel.strokes.add(it) }
         } else {
             val bounds = RectF(); poly.computeBounds(bounds, true)
             val region = Region().apply {
                 setPath(poly, Region(bounds.left.toInt() - 1, bounds.top.toInt() - 1, bounds.right.toInt() + 1, bounds.bottom.toInt() + 1))
             }
             for (s in page.strokes) {
+                if (!vis(s)) continue
                 val p = s.points
                 var inside = 0; var total = 0
                 var i = 0
                 while (i < p.size) { total++; if (region.contains(p[i].toInt(), p[i + 1].toInt())) inside++; i += 3 }
                 if (total > 0 && inside >= total * 0.6f) sel.strokes.add(s)
             }
-            for (t in page.texts) { val b = renderer.textBounds(t); if (region.contains(b.centerX().toInt(), b.centerY().toInt())) sel.texts.add(t) }
+            for (t in page.texts) { if (!vis(t)) continue; val b = renderer.textBounds(t); if (region.contains(b.centerX().toInt(), b.centerY().toInt())) sel.texts.add(t) }
             for (im in page.images) if (region.contains((im.x + im.w / 2).toInt(), (im.y + im.h / 2).toInt())) sel.images.add(im)
         }
         if (sel.isEmpty) { clearSelection(); return }
@@ -1143,6 +1184,7 @@ class InkView(
 
     /** El yazısı çizgilerini tanınan metin kutularıyla değiştirir (geri alınabilir) */
     fun replaceStrokesWithTexts(pageIndex: Int, strokes: Collection<Stroke>, texts: List<TextItem>) {
+        if (hideInk) texts.forEach { it.retry = true }
         val page = doc.pages.getOrNull(pageIndex) ?: return
         snapshot(page)
         page.strokes.removeAll(strokes.toSet())
@@ -1153,6 +1195,7 @@ class InkView(
     }
 
     fun addText(pageIndex: Int, item: TextItem) {
+        if (hideInk) item.retry = true
         val page = doc.pages.getOrNull(pageIndex) ?: return
         snapshot(page); page.texts.add(item); markDirty(page); commit(); invalidate()
     }
@@ -1188,7 +1231,7 @@ class InkView(
 
     // ---- görüntü üretimi ----
     /** Bir sayfa bölgesini (PDF arka planı dahil) bitmap'e çizer: kırp → nota at */
-    fun renderRegion(pageIndex: Int, rect: RectF, maxPx: Int = 1800): Bitmap {
+    fun renderRegion(pageIndex: Int, rect: RectF, maxPx: Int = 1800, includeInk: Boolean = true): Bitmap {
         val page = doc.pages[pageIndex]
         val k = min(3f, maxPx / max(1f, max(rect.width(), rect.height())))
         val bw = max(1, (rect.width() * k).roundToInt()); val bh = max(1, (rect.height() * k).roundToInt())
@@ -1202,8 +1245,15 @@ class InkView(
                 c.drawBitmap(it, null, RectF(0f, 0f, PAGE_WIDTH, page.baseHeight), bmpPaint)
             }
         }
-        renderer.drawPage(c, page, noteDir)
+        if (includeInk) renderer.drawPage(c, page, noteDir)
+        else { renderer.drawTemplate(c, page); renderer.drawImages(c, page, noteDir) }
         return bmp
+    }
+
+    /** Sayfanın tamamı (deneme yanlışları için, çözümsüz) */
+    fun renderPageClean(pageIndex: Int): Bitmap? {
+        val p = doc.pages.getOrNull(pageIndex) ?: return null
+        return renderRegion(pageIndex, RectF(0f, 0f, p.width, p.height), 1600, includeInk = false)
     }
 
     fun renderThumbnail(widthPx: Int = 360): Bitmap? {

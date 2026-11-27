@@ -21,6 +21,9 @@ class Stroke(
     /** x, y, basınç üçlüleri */
     var points: FloatArray,
 ) {
+    /** "Tekrar çöz" sırasında çizildi (kaydedilmez) */
+    var retry = false
+
     val pointCount get() = points.size / 3
 
     fun bounds(): FloatArray {
@@ -35,7 +38,7 @@ class Stroke(
         return floatArrayOf(l - pad, t - pad, r + pad, b + pad)
     }
 
-    fun copy() = Stroke(pen, color, width, points.copyOf())
+    fun copy() = Stroke(pen, color, width, points.copyOf()).also { it.retry = retry }
 
     fun toJson(): JSONObject = JSONObject().apply {
         put("pen", pen.name); put("color", color); put("w", width.toDouble())
@@ -77,7 +80,10 @@ class TextItem(
     /** Yazı tipi kimliği (NoteFonts) */
     var font: String,
 ) {
-    fun copy() = TextItem(text, x, y, size, color, font)
+    /** "Tekrar çöz" sırasında eklendi */
+    var retry = false
+
+    fun copy() = TextItem(text, x, y, size, color, font).also { it.retry = retry }
     fun toJson() = JSONObject().apply {
         put("t", text); put("x", x.toDouble()); put("y", y.toDouble()); put("s", size.toDouble())
         put("c", color); put("f", font)

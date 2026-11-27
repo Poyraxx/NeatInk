@@ -30,6 +30,7 @@ object AppState {
     lateinit var store: NoteStore
     lateinit var renderer: PageRenderer
     val recognizer by lazy { InkRecognizer() }
+    val mistakes by lazy { com.xaser.note.data.MistakeStore(store.root) }
 
     fun init(context: Context) {
         if (!::store.isInitialized) store = NoteStore(context.applicationContext)
