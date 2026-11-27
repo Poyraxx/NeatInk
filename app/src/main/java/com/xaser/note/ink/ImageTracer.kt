@@ -22,8 +22,10 @@ object ImageTracer {
     fun trace(gray: IntArray, w: Int, h: Int, maskRects: List<IntArray> = emptyList()): List<Traced> {
         val ink = threshold(gray, w, h)
         for (r in maskRects) {
-            val pad = max(2, (r[3] - r[1]) / 6)
-            for (y in max(0, r[1] - pad) until min(h, r[3] + pad)) for (x in max(0, r[0] - pad) until min(w, r[2] + pad)) ink[y * w + x] = false
+            // Yazı kutusu harflerin uçlarını tam kapsamayabilir: yanlara daha geniş pay
+            val lh = r[3] - r[1]
+            val padY = max(2, lh / 5); val padX = max(3, lh / 3)
+            for (y in max(0, r[1] - padY) until min(h, r[3] + padY)) for (x in max(0, r[0] - padX) until min(w, r[2] + padX)) ink[y * w + x] = false
         }
         removeSmallComponents(ink, w, h, minPixels = max(25, (w * h) / 40000))
         val inkCount = ink.count { it }
@@ -36,8 +38,19 @@ object ImageTracer {
         val paths = tracePaths(skel, w, h)
         val minLen = max(8f, min(w, h) / 80f)
         val out = ArrayList<Traced>()
+        // Yazı kutusunun hemen yanındaki kısa izler, maskelenmemiş harf uçlarıdır: at
+        fun nearText(p: FloatArray): Boolean = maskRects.any { r ->
+            val lh = (r[3] - r[1]).toFloat()
+            var inside = true
+            var i = 0
+            while (i < p.size) {
+                if (p[i] < r[0] - lh || p[i] > r[2] + lh || p[i + 1] < r[1] - lh * 0.6f || p[i + 1] > r[3] + lh * 0.6f) { inside = false; break }
+                i += 2
+            }
+            inside && pathLength(p) < lh * 1.2f
+        }
         for (p in paths) {
-            if (pathLength(p) < minLen) continue
+            if (pathLength(p) < minLen || nearText(p)) continue
             val simp = simplify(p, 1.2f)
             val pts = FloatArray(simp.size / 2 * 3)
             for (i in 0 until simp.size / 2) { pts[i * 3] = simp[i * 2]; pts[i * 3 + 1] = simp[i * 2 + 1]; pts[i * 3 + 2] = 0.6f }

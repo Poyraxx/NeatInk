@@ -563,8 +563,12 @@ fun EditorScreen(meta: NoteMeta, initialPage: Int = -1, onBack: () -> Unit, onOp
                             d.allocator = android.graphics.ImageDecoder.ALLOCATOR_SOFTWARE
                         }
                     }
+                    val tf = NoteFonts.typeface(context, NoteFonts.PLAIN)
                     com.xaser.note.ink.ImageDigitizer.digitize(bmp, view.digitizeWidth(), view.penColors[PenType.BALLPOINT]!!,
-                        NoteFonts.PLAIN, withText, withShapes)
+                        NoteFonts.PLAIN, withText, withShapes) { t ->
+                        // Arka planda ölçüm: ayrı Paint (çizimle çakışmasın)
+                        android.graphics.Paint().apply { typeface = tf; textSize = t.size }.measureText(t.text)
+                    }
                 }.getOrNull()
                 busy = null
                 when {

@@ -2,6 +2,18 @@
 
 All notable changes to NeatInk are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.4.1] — 2026-11-28
+
+### Improved
+- **Math in digitized images**:
+  - superscripts and subscripts are rebuilt from character positions (x², a₁);
+  - small characters misread as commas are enlarged and read again;
+  - exponents read as a separate line are merged back into their line;
+  - fractions are centered on a straight bar, and a bar read as "———" becomes a line;
+  - `<=`, `>=`, `!=`, `+-`, `V2` and `TT` become ≤, ≥, ≠, ±, √2 and π;
+  - in mostly numeric words, letters that look like digits are fixed (2O19 → 2019);
+  - stray marks next to text are dropped.
+
 ## [1.4.0] — 2026-11-28
 
 ### Added
@@ -55,6 +67,7 @@ All notable changes to NeatInk are documented here. The format follows [Keep a C
 ### Added
 - First public release: five pressure pens, eraser, lasso, shape snapping, PDF import and annotation, solution space, cut question, PDF export, handwriting auto-fix with selectable fonts, Xiaomi pen buttons, English/Turkish UI and an update check.
 
+[1.4.1]: https://github.com/Poyraxx/NeatInk/releases/tag/v1.4.1
 [1.4.0]: https://github.com/Poyraxx/NeatInk/releases/tag/v1.4.0
 [1.3.2]: https://github.com/Poyraxx/NeatInk/releases/tag/v1.3.2
 [1.3.1]: https://github.com/Poyraxx/NeatInk/releases/tag/v1.3.1
