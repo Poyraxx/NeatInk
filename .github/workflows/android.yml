@@ -21,7 +21,7 @@ jobs:
       - uses: android-actions/setup-android@v3
         with:
           # Varsayılan "tools" paketi artık yok; yalnızca gerekenleri kur
-          packages: "platform-tools platforms;android-37 build-tools;36.0.0"
+          packages: "platform-tools platforms;android-37.0 build-tools;36.0.0"
       - name: Unit tests
         run: ./gradlew testDebugUnitTest --no-daemon
       - name: Build release APK
