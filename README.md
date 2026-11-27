@@ -1,6 +1,6 @@
-# Not — handwriting notes & PDF study app for Android tablets
+# NeatInk — handwriting notes & PDF study app for Android tablets
 
-**Not** is an offline-first note-taking app for Android tablets, built for solving test questions with a stylus. It feels like the stock Xiaomi Notes app, plus the things it is missing: **PDF import and annotation** and **automatic cleanup of messy handwriting**.
+**NeatInk** is an offline-first note-taking app for Android tablets, built for solving test questions with a stylus. It feels like the stock Xiaomi Notes app, plus the things it is missing: **PDF import and annotation** and **automatic cleanup of messy handwriting**.
 
 <p align="center">
   <img src="docs/toolbar.png" alt="Editor toolbar" width="100%"><br>
@@ -9,7 +9,7 @@
 
 ## Download
 
-Get the latest APK from the **[Releases page](https://github.com/Poyraxx/Not/releases/latest)** and open it on your tablet. You may need to allow "Install unknown apps" for your file manager or browser.
+Get the latest APK from the **[Releases page](https://github.com/Poyraxx/NeatInk/releases/latest)** and open it on your tablet. You may need to allow "Install unknown apps" for your file manager or browser.
 
 Requirements: Android 10 (API 29) or newer. Designed for tablets; it also runs on phones.
 
@@ -39,7 +39,7 @@ Requirements: Android 10 (API 29) or newer. Designed for tablets; it also runs o
 - **Tap** the lower button for the next pen and the upper button for the previous pen.
 - **Hold** either button to erase while held, just like Xiaomi Notes.
 
-HyperOS normally takes over long-presses of the pen buttons (Quick Note / screenshot) in every app except Xiaomi's own. Not avoids this only while a note is open: it turns on HyperOS's "game mode" flag, which stops the system from using the pen buttons, and turns it off again when you leave the note. This needs one permission that can only be granted over USB, once:
+HyperOS normally takes over long-presses of the pen buttons (Quick Note / screenshot) in every app except Xiaomi's own. NeatInk avoids this only while a note is open: it turns on HyperOS's "game mode" flag, which stops the system from using the pen buttons, and turns it off again when you leave the note. This needs one permission that can only be granted over USB, once:
 
 ```bash
 adb shell pm grant com.xaser.note android.permission.WRITE_SECURE_SETTINGS
@@ -77,6 +77,8 @@ Project layout:
 1. Increase `versionCode` and `versionName` in `app/build.gradle.kts`.
 2. Build the release APK and attach it to a new GitHub release.
 3. Update `version.json` with the same `versionCode` and `versionName`. Installed apps will show the update button the next time they start online.
+
+Keep the application ID (`com.xaser.note`) and the signing key the same. Then new versions install over old ones, and each device keeps its own notes.
 
 ## Credits
 

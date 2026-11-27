@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "Not"
+rootProject.name = "NeatInk"
 include(":app")

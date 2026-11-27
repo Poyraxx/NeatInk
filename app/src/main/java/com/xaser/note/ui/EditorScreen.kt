@@ -295,7 +295,7 @@ fun EditorScreen(meta: NoteMeta, onBack: () -> Unit, onOpenNote: (NoteMeta) -> U
             val f = withContext(Dispatchers.IO) {
                 runCatching {
                     val dir = File(context.cacheDir, "export").apply { mkdirs() }
-                    val name = (meta.title.ifBlank { "Not" }).replace(Regex("[\\\\/:*?\"<>|]"), "_") + ".pdf"
+                    val name = (meta.title.ifBlank { "NeatInk" }).replace(Regex("[\\\\/:*?\"<>|]"), "_") + ".pdf"
                     val out = File(dir, name)
                     PdfExporter.export(snap, noteDir, pdfCache, renderer, out)
                     out

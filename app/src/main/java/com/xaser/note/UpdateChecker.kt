@@ -18,9 +18,9 @@ import java.net.URL
  * İnternet yoksa hiç denemez — uygulama tamamen çevrimdışı çalışır.
  */
 object UpdateChecker {
-    const val REPO_URL = "https://github.com/Poyraxx/Not"
+    const val REPO_URL = "https://github.com/Poyraxx/NeatInk"
     const val RELEASES_URL = "$REPO_URL/releases/latest"
-    private const val VERSION_URL = "https://raw.githubusercontent.com/Poyraxx/Not/main/version.json"
+    private const val VERSION_URL = "https://raw.githubusercontent.com/Poyraxx/NeatInk/main/version.json"
 
     class Update(val versionName: String, val url: String)
 

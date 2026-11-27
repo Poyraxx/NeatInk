@@ -67,7 +67,7 @@ fun SettingsDialog(onDismiss: () -> Unit) {
                 Spacer(Modifier.height(14.dp))
                 Text(L("Sürüm", "Version") + " " + UpdateChecker.currentVersionName(ctx), color = TextSecondary, fontSize = 14.sp)
                 Text(
-                    "GitHub: github.com/Poyraxx/Not", color = AccentDark, fontSize = 14.sp,
+                    "GitHub: github.com/Poyraxx/NeatInk", color = AccentDark, fontSize = 14.sp,
                     modifier = Modifier.padding(top = 4.dp).clickable { openUrl(ctx, UpdateChecker.REPO_URL) },
                 )
             }
