@@ -6,7 +6,8 @@ import java.util.UUID
 
 enum class NoteType { TEXT, INK, PDF }
 
-enum class PageTemplate { BLANK, LINED, GRID, DOTS }
+/** Yeni şablonlar sona eklenir (kayıtlı notlar adla okunur) */
+enum class PageTemplate { BLANK, LINED, GRID, DOTS, GRID_SMALL, CORNELL }
 
 enum class PenType { BALLPOINT, FOUNTAIN, PENCIL, MARKER, HIGHLIGHTER }
 

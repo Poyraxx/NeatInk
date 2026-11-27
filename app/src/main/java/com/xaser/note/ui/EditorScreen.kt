@@ -832,17 +832,13 @@ private fun MoreMenu(
     onMargin: () -> Unit, onExport: (share: Boolean) -> Unit,
     onDownloadModel: () -> Unit, onTemplateDefault: (PageTemplate) -> Unit,
 ) {
-    var tplMenu by remember { mutableStateOf(false) }
+    var tplPicker by remember { mutableStateOf<Boolean?>(null) } // true: sayfa ekle, false: şablonu değiştir
     DropdownMenu(open, onDismiss) {
         DropdownMenuItem({ Text(L("Başlık: ", "Title: ") + meta.title.ifBlank { L("Başlıksız", "Untitled") }) }, { onDismiss(); onRename() })
         HorizontalDivider()
-        DropdownMenuItem({ Text(L("Sonraya sayfa ekle", "Add page after")) }, {
-            val p = view.currentPage
-            view.insertPage(p, view.pageAtIndex(p).template.takeIf { view.pageAtIndex(p).pdfIndex < 0 } ?: PageTemplate.BLANK)
-            view.scrollToPage(p + 1); onDismiss()
-        })
+        DropdownMenuItem({ Text(L("Sonraya sayfa ekle…", "Add page after…")) }, { onDismiss(); tplPicker = true })
         DropdownMenuItem({ Text(L("Bu sayfayı sil", "Delete this page")) }, { view.deletePage(view.currentPage); onDismiss() })
-        DropdownMenuItem({ Text(L("Sayfa şablonu…", "Page template…")) }, { tplMenu = true })
+        DropdownMenuItem({ Text(L("Sayfa şablonu…", "Page template…")) }, { onDismiss(); tplPicker = false })
         if (meta.type == NoteType.PDF) DropdownMenuItem({ Text(L("Çözüm alanı aç (kenar boşluğu)", "Add solution space (margin)")) }, { onDismiss(); onMargin() })
         HorizontalDivider()
         DropdownMenuItem({ Text(L("PDF olarak paylaş", "Share as PDF")) }, { onDismiss(); onExport(true) })
@@ -850,10 +846,14 @@ private fun MoreMenu(
         HorizontalDivider()
         DropdownMenuItem({ Text(L("El yazısı modelini indir (Türkçe)", "Download handwriting model (Turkish)")) }, { onDismiss(); onDownloadModel() })
     }
-    DropdownMenu(tplMenu, { tplMenu = false }) {
-        listOf(PageTemplate.BLANK to L("Boş", "Blank"), PageTemplate.LINED to L("Çizgili", "Lined"), PageTemplate.GRID to L("Kareli", "Grid"), PageTemplate.DOTS to L("Noktalı", "Dotted")).forEach { (t, n) ->
-            DropdownMenuItem({ Text(L("$n — bu sayfa", "$n — this page")) }, { view.setTemplate(view.currentPage, t, false); tplMenu = false; onDismiss() })
-            DropdownMenuItem({ Text(L("$n — tüm sayfalar (varsayılan)", "$n — all pages (default)")) }, { view.setTemplate(0, t, true); onTemplateDefault(t); tplMenu = false; onDismiss() })
+    tplPicker?.let { adding ->
+        val p = view.currentPage
+        val cur = view.pageAtIndex(p).template
+        TemplatePickerDialog(adding, cur, onDismiss = { tplPicker = null }) { t, all ->
+            if (adding) { view.insertPage(p, t); view.scrollToPage(p + 1) }
+            else if (all) { view.setTemplate(0, t, true); onTemplateDefault(t) }
+            else view.setTemplate(p, t, false)
+            tplPicker = null
         }
     }
 }
@@ -946,4 +946,57 @@ private fun CheckRow(checked: Boolean, title: String, sub: String?, onChange: (B
             if (sub != null) Text(sub, fontSize = 12.sp, color = TextSecondary)
         }
     }
+}
+
+
+/** Şablon adları */
+fun templateName(t: PageTemplate) = when (t) {
+    PageTemplate.BLANK -> L("Boş", "Blank")
+    PageTemplate.LINED -> L("Çizgili", "Lined")
+    PageTemplate.GRID -> L("Kareli", "Grid")
+    PageTemplate.GRID_SMALL -> L("Küçük kareli", "Small grid")
+    PageTemplate.DOTS -> L("Noktalı", "Dotted")
+    PageTemplate.CORNELL -> L("Cornell not", "Cornell notes")
+}
+
+/** Resimli şablon seçici (sayfa eklerken / şablonu değiştirirken) */
+@Composable
+fun TemplatePickerDialog(adding: Boolean, current: PageTemplate, onDismiss: () -> Unit, onPick: (PageTemplate, Boolean) -> Unit) {
+    var sel by remember { mutableStateOf(current) }
+    var all by remember { mutableStateOf(false) }
+    val previews = remember { PageTemplate.entries.associateWith { AppState.renderer.templatePreview(it, 220).asImageBitmap() } }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (adding) L("Yeni sayfa", "New page") else L("Sayfa şablonu", "Page template")) },
+        text = {
+            Column {
+                PageTemplate.entries.chunked(3).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.padding(bottom = 12.dp)) {
+                        row.forEach { t ->
+                            val on = t == sel
+                            Column(
+                                Modifier.width(104.dp).clip(RoundedCornerShape(10.dp)).clickable { sel = t }.padding(4.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                androidx.compose.foundation.Image(
+                                    previews.getValue(t), templateName(t),
+                                    modifier = Modifier.width(92.dp).height(130.dp).clip(RoundedCornerShape(6.dp))
+                                        .border(if (on) 3.dp else 1.dp, if (on) Accent else Color(0xFFDDDDDD), RoundedCornerShape(6.dp)),
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Text(templateName(t), fontSize = 13.sp, color = if (on) AccentDark else TextPrimary,
+                                    fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal, maxLines = 1)
+                            }
+                        }
+                    }
+                }
+                if (!adding) Row(Modifier.clip(RoundedCornerShape(10.dp)).clickable { all = !all }, verticalAlignment = Alignment.CenterVertically) {
+                    androidx.compose.material3.Checkbox(all, { all = it }, colors = androidx.compose.material3.CheckboxDefaults.colors(checkedColor = Accent))
+                    Text(L("Tüm sayfalara uygula (varsayılan yap)", "Apply to all pages (make default)"), fontSize = 14.sp)
+                }
+            }
+        },
+        confirmButton = { TextButton({ onPick(sel, all) }) { Text(if (adding) L("Sayfa ekle", "Add page") else L("Uygula", "Apply"), color = Accent) } },
+        dismissButton = { TextButton(onDismiss) { Text(L("İptal", "Cancel")) } },
+    )
 }

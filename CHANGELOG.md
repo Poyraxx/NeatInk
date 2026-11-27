@@ -2,6 +2,12 @@
 
 All notable changes to NeatInk are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.4.0] — 2026-11-28
+
+### Added
+- **Visual page template picker**: adding a page or changing its template now shows real previews of each template, like the stock notes app.
+- New templates: **Small grid** (for math) and **Cornell notes** (cue column, notes area and summary box).
+
 ## [1.3.2] — 2026-11-27
 
 ### Fixed
@@ -49,6 +55,7 @@ All notable changes to NeatInk are documented here. The format follows [Keep a C
 ### Added
 - First public release: five pressure pens, eraser, lasso, shape snapping, PDF import and annotation, solution space, cut question, PDF export, handwriting auto-fix with selectable fonts, Xiaomi pen buttons, English/Turkish UI and an update check.
 
+[1.4.0]: https://github.com/Poyraxx/NeatInk/releases/tag/v1.4.0
 [1.3.2]: https://github.com/Poyraxx/NeatInk/releases/tag/v1.3.2
 [1.3.1]: https://github.com/Poyraxx/NeatInk/releases/tag/v1.3.1
 [1.3.0]: https://github.com/Poyraxx/NeatInk/releases/tag/v1.3.0

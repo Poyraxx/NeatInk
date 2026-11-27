@@ -26,7 +26,8 @@ Requirements: Android 10 (API 29) or newer. Designed for tablets; it also runs o
 - **Stroke eraser** and **area eraser**.
 - **Lasso**: move, resize, recolor, copy, cut or delete strokes, images and text.
 - **Shapes**: draw a shape and hold the pen still for a moment. It snaps to a clean line, arrow, circle, ellipse, triangle, rectangle or polygon.
-- Text boxes, images, unlimited undo/redo, and blank, lined, grid or dotted page templates.
+- Text boxes, images and unlimited undo/redo.
+- Page templates with visual previews: blank, lined, grid, small grid (for math), dotted and Cornell notes.
 - **Digitize images**: when adding an image, tick *Digitize*. Text and numbers in the image become editable text boxes (on-device OCR), and its lines and shapes become pen strokes. Clean shapes snap to circles, rectangles, triangles and lines. You can keep the original image behind the result.
 - **Palm rejection**: only the pen draws and fingers scroll and zoom. Finger drawing can be turned on.
 

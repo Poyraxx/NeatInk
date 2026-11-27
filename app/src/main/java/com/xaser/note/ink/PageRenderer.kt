@@ -47,14 +47,14 @@ class PageRenderer(private val context: Context) {
         val top = if (page.pdfIndex >= 0) page.baseHeight else 0f
         val t = page.template
         if (t == PageTemplate.BLANK) return
-        val step = if (t == PageTemplate.LINED) 40f else 36f
+        val step = when (t) { PageTemplate.LINED, PageTemplate.CORNELL -> 40f; PageTemplate.GRID_SMALL -> 22f; else -> 36f }
         val y0 = max(top, clip?.top ?: top)
         when (t) {
             PageTemplate.LINED -> {
                 var y = top + 90f
                 while (y < h) { if (y >= y0 - step) c.drawLine(40f, y, w - 40f, y, templatePaint); y += step }
             }
-            PageTemplate.GRID -> {
+            PageTemplate.GRID, PageTemplate.GRID_SMALL -> {
                 var y = top + step
                 while (y < h) { c.drawLine(0f, y, w, y, templatePaint); y += step }
                 var x = step
@@ -64,12 +64,46 @@ class PageRenderer(private val context: Context) {
                 var y = top + step
                 while (y < h) {
                     var x = step
-                    while (x < w) { c.drawCircle(x, y, 2f, dotPaint); x += step }
+                    while (x < w) { c.drawCircle(x, y, dotRadius, dotPaint); x += step }
                     y += step
                 }
             }
+            PageTemplate.CORNELL -> {
+                // Cornell: solda ipucu sütunu, sağda not satırları, altta özet alanı
+                val head = top + 90f
+                val sumY = top + (h - top) * 0.78f
+                val cueX = w * 0.3f
+                c.drawLine(0f, head, w, head, cornellPaint)
+                c.drawLine(cueX, head, cueX, sumY, cornellPaint)
+                c.drawLine(0f, sumY, w, sumY, cornellPaint)
+                var y = head + step
+                while (y < sumY - 4) { if (y >= y0 - step) c.drawLine(cueX + 20f, y, w - 30f, y, templatePaint); y += step }
+            }
             else -> {}
         }
+    }
+
+    /** Noktalı şablonun nokta yarıçapı (önizlemede büyütülür) */
+    private var dotRadius = 2f
+
+    private val cornellPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFB0BEC5.toInt(); strokeWidth = 2.5f }
+
+    /** Şablon önizlemesi (şablon seçicide): sayfanın gerçek çizimiyle aynı */
+    fun templatePreview(t: PageTemplate, widthPx: Int): Bitmap {
+        val page = Page(template = t)
+        val k = widthPx / page.width
+        val bmp = Bitmap.createBitmap(widthPx, (page.height * k).toInt(), Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        c.drawColor(Color.WHITE)
+        c.scale(k, k)
+        // Küçük boyutta çizgiler kaybolmasın
+        val old = templatePaint.strokeWidth; val oldDot = dotPaint.color
+        templatePaint.strokeWidth = 2.2f / k.coerceAtMost(1f) * 0.6f
+        dotRadius = 7f; dotPaint.color = 0xFFAAB2BC.toInt()
+        drawTemplate(c, page)
+        dotRadius = 2f
+        templatePaint.strokeWidth = old; dotPaint.color = oldDot
+        return bmp
     }
 
     fun loadImage(file: File): Bitmap? {
