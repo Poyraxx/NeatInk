@@ -22,7 +22,7 @@ import kotlin.math.min
 /**
  * Google ML Kit el yazısı tanıma (Türkçe). Model bir kez indirilir (~20MB), sonra internetsiz çalışır.
  */
-class InkRecognizer {
+class InkRecognizer(private val languageTag: String = "tr") {
     enum class State { NOT_DOWNLOADED, DOWNLOADING, READY, ERROR }
 
     var state = State.NOT_DOWNLOADED
@@ -31,14 +31,14 @@ class InkRecognizer {
         private set
 
     private val model: DigitalInkRecognitionModel? = runCatching {
-        DigitalInkRecognitionModelIdentifier.fromLanguageTag("tr")?.let { DigitalInkRecognitionModel.builder(it).build() }
+        DigitalInkRecognitionModelIdentifier.fromLanguageTag(languageTag)?.let { DigitalInkRecognitionModel.builder(it).build() }
     }.getOrNull()
     private var recognizer: DigitalInkRecognizer? = null
     private val manager = RemoteModelManager.getInstance()
     private val waiting = mutableListOf<(Boolean) -> Unit>()
 
     fun ensureModel(onDone: (Boolean) -> Unit) {
-        val m = model ?: run { state = State.ERROR; lastError = L("Türkçe modeli bulunamadı", "Turkish model not found"); onDone(false); return }
+        val m = model ?: run { state = State.ERROR; lastError = L("El yazısı modeli bulunamadı ($languageTag)", "Handwriting model not found ($languageTag)"); onDone(false); return }
         if (state == State.READY) { onDone(true); return }
         waiting.add(onDone)
         if (state == State.DOWNLOADING) return
@@ -87,6 +87,12 @@ class InkRecognizer {
                 .addOnFailureListener { onResult(emptyList()) }
         }
     }
+
+    /** Coroutine içinden tanıma */
+    suspend fun recognizeAwait(strokes: List<Stroke>, area: RectF, preContext: String): List<String> =
+        kotlinx.coroutines.suspendCancellableCoroutine { cont ->
+            recognize(strokes, area, preContext) { if (cont.isActive) cont.resume(it) { } }
+        }
 
     private var warmed = false
 

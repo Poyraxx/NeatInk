@@ -111,6 +111,9 @@ import com.xaser.note.model.TextItem
 import com.xaser.note.pdf.PdfExporter
 import com.xaser.note.pdf.PdfPageCache
 import com.xaser.note.recognition.Beautifier
+import com.xaser.note.recognition.MathLayout
+import com.xaser.note.recognition.MathText
+import kotlin.math.abs
 import com.xaser.note.recognition.InkRecognizer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -206,32 +209,68 @@ fun EditorScreen(meta: NoteMeta, initialPage: Int = -1, onBack: () -> Unit, onOp
     /** Seçili çizgileri tanıyıp metne / düzgün el yazısına çevirir */
     fun recognizeAndReplace(pageIndex: Int, strokes: List<Stroke>, font: String, auto: Boolean) {
         if (strokes.isEmpty()) return
-        if (recognizer.state != InkRecognizer.State.READY) busy = L("Tanıma modeli hazırlanıyor… (ilk sefer internet gerekir)", "Preparing recognition model… (internet needed the first time)")
-        val lines = Beautifier.splitLines(strokes)
-        val results = arrayOfNulls<List<String>>(lines.size)
-        var remaining = lines.size
-        lines.forEachIndexed { i, line ->
-            recognizer.recognize(line.strokes, line.bounds, "") { cands ->
-                results[i] = cands
-                remaining--
-                if (remaining == 0) {
-                    busy = null
-                    if (results.all { it.isNullOrEmpty() }) {
-                        if (!auto) toast(recognizer.lastError ?: L("Yazı tanınamadı", "Could not recognize the writing"))
-                        return@recognize
-                    }
-                    val color = strokes.first().color
-                    if (!auto && lines.size == 1 && results[0]!!.size > 1) {
-                        candidates = CandidateRequest(pageIndex, strokes, lines[0], results[0]!!, color, font)
-                    } else {
-                        val texts = lines.indices.mapNotNull { k ->
-                            results[k]?.firstOrNull()?.let { Beautifier.place(it, lines[k], color, font, renderer) }
-                        }
-                        val used = lines.indices.filter { !results[it].isNullOrEmpty() }.flatMap { lines[it].strokes }
-                        view.replaceStrokesWithTexts(pageIndex, used, texts)
-                    }
+        val page = view.pageAtIndex(pageIndex)
+        val visibleTexts = page.texts.filter { !view.hideInk || it.retry }
+        fun boxOf(t: TextItem) = renderer.textBounds(t).let { MathLayout.Box(it.left, it.top, it.right, it.bottom) }
+        val textBoxes = visibleTexts.map { boxOf(it) }
+        // 1) Yerleşim: kesir, düz çizgi, işaret, nokta/şapka
+        val plan = MathLayout.analyze(strokes, textBoxes)
+        val rec = recognizer
+        scope.launch {
+            val mlGroups = plan.groups.filter { it.symbol == null }
+            if (mlGroups.isNotEmpty() && rec.state != InkRecognizer.State.READY)
+                busy = L("Tanıma modeli hazırlanıyor… (ilk sefer internet gerekir)", "Preparing recognition model… (internet needed the first time)")
+            // 2) Tanıma (aynı satırda soldaki metin bağlam olarak verilir)
+            val results = HashMap<MathLayout.Group, List<String>>()
+            for (g in mlGroups) {
+                val left = visibleTexts.filter { t -> val b = boxOf(t); b.r <= g.box.l + 4 && abs(b.cy - g.box.cy) < plan.unit && g.box.l - b.r < plan.unit * 3 }
+                    .maxByOrNull { boxOf(it).r }?.text.orEmpty()
+                results[g] = rec.recognizeAwait(g.strokes, RectF(g.box.l, g.box.t, g.box.r, g.box.b), left)
+            }
+            busy = null
+            val color = strokes.first().color
+            // Tek satır, birden çok aday ve başka değişiklik yok: kullanıcı seçsin
+            if (!auto && plan.groups.size == 1 && plan.groups[0].symbol == null && plan.marks.isEmpty() && plan.straightened.isEmpty()) {
+                val g = plan.groups[0]; val c = results[g].orEmpty()
+                if (c.size > 1) {
+                    candidates = CandidateRequest(pageIndex, g.strokes, Beautifier.Line(g.strokes, RectF(g.box.l, g.box.t, g.box.r, g.box.b)), c, color, font)
+                    return@launch
                 }
             }
+            val removed = ArrayList<Stroke>()
+            val newTexts = ArrayList<TextItem>()
+            for (g in plan.groups) {
+                val text = g.symbol ?: MathText.pick(results[g].orEmpty(), g.math) ?: continue
+                // İşaretlerin boyu, el yazısının satır yüksekliğine göre
+                val bx = if (g.symbol != null) RectF(g.box.l, g.box.cy - plan.unit * 0.6f, g.box.r, g.box.cy + plan.unit * 0.4f)
+                    else RectF(g.box.l, g.box.t, g.box.r, g.box.b)
+                newTexts.add(Beautifier.place(text, Beautifier.Line(g.strokes, bx), color, font, renderer))
+                removed.addAll(g.strokes)
+            }
+            // 3) Sonradan konan nokta/şapka/çengel → var olan harfi düzelt
+            val edits = ArrayList<Pair<TextItem, String>>()
+            for ((g, mk) in plan.marks) {
+                val t = visibleTexts.filter { MathLayout.near(g.box, boxOf(it), mk) }.minByOrNull { abs(boxOf(it).cx - g.box.cx) } ?: continue
+                val current = edits.lastOrNull { it.first === t }?.second ?: t.text
+                val paint = renderer.textPaintFor(t)
+                var x = t.x; var idx = -1
+                for (i in current.indices) {
+                    val w = paint.measureText(current, i, i + 1)
+                    if (g.box.cx in x..(x + w)) { idx = i; break }
+                    x += w
+                }
+                if (idx < 0) idx = if (g.box.cx < t.x) 0 else current.length - 1
+                val below = mk == MathLayout.Mark.HOOK_BELOW
+                val fixed = MathLayout.applyMark(current, idx, mk, below)
+                    ?: MathLayout.applyMark(current, idx - 1, mk, below) ?: MathLayout.applyMark(current, idx + 1, mk, below)
+                if (fixed != null) { edits.add(t to fixed); removed.addAll(g.strokes) }
+            }
+            removed.addAll(plan.straightened.map { it.first })
+            if (newTexts.isEmpty() && edits.isEmpty() && plan.straightened.isEmpty()) {
+                if (!auto) toast(rec.lastError ?: L("Yazı tanınamadı", "Could not recognize the writing"))
+                return@launch
+            }
+            view.applyRecognition(pageIndex, removed, plan.straightened.map { it.second }, newTexts, edits)
         }
     }
 

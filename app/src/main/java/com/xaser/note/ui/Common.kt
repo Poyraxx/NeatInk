@@ -29,7 +29,10 @@ import java.util.Locale
 object AppState {
     lateinit var store: NoteStore
     lateinit var renderer: PageRenderer
-    val recognizer by lazy { InkRecognizer() }
+    private val recognizerTr by lazy { InkRecognizer("tr") }
+    private val recognizerEn by lazy { InkRecognizer("en") }
+    /** Uygulama diline göre el yazısı modeli (Türkçe / İngilizce) */
+    val recognizer: InkRecognizer get() = if (com.xaser.note.Lang.isEnglish) recognizerEn else recognizerTr
     val mistakes by lazy { com.xaser.note.data.MistakeStore(store.root) }
     val study by lazy { com.xaser.note.data.StudyStore(store.root) }
 

@@ -1194,6 +1194,24 @@ class InkView(
         commit(); invalidate()
     }
 
+    /**
+     * Tanıma sonucunu tek bir geri alma adımında uygular: çizgileri kaldır, düzeltilmiş çizgileri ve metinleri ekle,
+     * var olan metinlerdeki harfleri düzelt (u → ü gibi).
+     */
+    fun applyRecognition(pageIndex: Int, remove: Collection<Stroke>, addStrokes: List<Stroke>, addTexts: List<TextItem>,
+                         edits: List<Pair<TextItem, String>>) {
+        val page = doc.pages.getOrNull(pageIndex) ?: return
+        snapshot(page)
+        if (hideInk) { addStrokes.forEach { it.retry = true }; addTexts.forEach { it.retry = true } }
+        page.strokes.removeAll(remove.toSet())
+        page.strokes.addAll(addStrokes)
+        page.texts.addAll(addTexts)
+        edits.forEach { (t, s) -> t.text = s }
+        markDirty(page)
+        if (selection?.page == pageIndex) clearSelection()
+        commit(); invalidate()
+    }
+
     fun addText(pageIndex: Int, item: TextItem) {
         if (hideInk) item.retry = true
         val page = doc.pages.getOrNull(pageIndex) ?: return

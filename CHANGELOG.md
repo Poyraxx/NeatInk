@@ -2,6 +2,17 @@
 
 All notable changes to NeatInk are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.3.1] — 2026-11-27
+
+### Fixed
+- **Math-aware handwriting fixing**:
+  - Fractions (a number above a line above another number) are now understood: the bar is straightened, and the numerator and denominator are recognized separately, preferring digits.
+  - Long hand-drawn lines are straightened instead of being read as text.
+  - **+ − = × ÷** are recognized from their shape, even when written alone.
+  - Dots, breves and cedillas stay with their letter, so **ü ö ş ç ğ İ ?** are recognized. A dot added later fixes the letter that is already text (u → ü, s → ş, I → İ).
+  - The text to the left on the same line is passed to the recognizer as context.
+- The handwriting model follows the app language: Turkish or English.
+
 ## [1.3.0] — 2026-11-27
 
 ### Added
@@ -33,6 +44,7 @@ All notable changes to NeatInk are documented here. The format follows [Keep a C
 ### Added
 - First public release: five pressure pens, eraser, lasso, shape snapping, PDF import and annotation, solution space, cut question, PDF export, handwriting auto-fix with selectable fonts, Xiaomi pen buttons, English/Turkish UI and an update check.
 
+[1.3.1]: https://github.com/Poyraxx/NeatInk/releases/tag/v1.3.1
 [1.3.0]: https://github.com/Poyraxx/NeatInk/releases/tag/v1.3.0
 [1.2.0]: https://github.com/Poyraxx/NeatInk/releases/tag/v1.2.0
 [1.1.1]: https://github.com/Poyraxx/NeatInk/releases/tag/v1.1.1
