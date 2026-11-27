@@ -2,7 +2,7 @@
 
 All notable changes to NeatInk are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
-## [Unreleased] — 1.3.0
+## [1.3.0] — 2026-11-27
 
 ### Added
 - **Study screen**:
@@ -33,7 +33,7 @@ All notable changes to NeatInk are documented here. The format follows [Keep a C
 ### Added
 - First public release: five pressure pens, eraser, lasso, shape snapping, PDF import and annotation, solution space, cut question, PDF export, handwriting auto-fix with selectable fonts, Xiaomi pen buttons, English/Turkish UI and an update check.
 
-[Unreleased]: https://github.com/Poyraxx/NeatInk/compare/v1.2.0...HEAD
+[1.3.0]: https://github.com/Poyraxx/NeatInk/releases/tag/v1.3.0
 [1.2.0]: https://github.com/Poyraxx/NeatInk/releases/tag/v1.2.0
 [1.1.1]: https://github.com/Poyraxx/NeatInk/releases/tag/v1.1.1
 [1.1.0]: https://github.com/Poyraxx/NeatInk/releases/tag/v1.1.0
