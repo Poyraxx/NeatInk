@@ -242,9 +242,20 @@ fun EditorScreen(meta: NoteMeta, initialPage: Int = -1, onBack: () -> Unit, onOp
             for (g in plan.groups) {
                 val text = g.symbol ?: MathText.pick(results[g].orEmpty(), g.math) ?: continue
                 // İşaretlerin boyu, el yazısının satır yüksekliğine göre
-                val bx = if (g.symbol != null) RectF(g.box.l, g.box.cy - plan.unit * 0.6f, g.box.r, g.box.cy + plan.unit * 0.4f)
-                    else RectF(g.box.l, g.box.t, g.box.r, g.box.b)
-                newTexts.add(Beautifier.place(text, Beautifier.Line(g.strokes, bx), color, font, renderer))
+                if (g.symbol != null) {
+                    // İşaret: genişliği ve dikey ortası çizilen şekle eşit olsun
+                    val t = TextItem(text, g.box.l, g.box.cy, 40f, color, font)
+                    val r = android.graphics.Rect()
+                    renderer.textPaintFor(t).getTextBounds(text, 0, text.length, r)
+                    val target = if (text == "-" || text == "=") g.box.w else maxOf(g.box.w, g.box.h)
+                    t.size = (40f * target / maxOf(1, r.width())).coerceIn(14f, maxOf(60f, plan.unit * 2.5f))
+                    renderer.textPaintFor(t).getTextBounds(text, 0, text.length, r)
+                    t.x = g.box.cx - (r.left + r.right) / 2f
+                    t.y = g.box.cy - (r.top + r.bottom) / 2f
+                    newTexts.add(t)
+                } else {
+                    newTexts.add(Beautifier.place(text, Beautifier.Line(g.strokes, RectF(g.box.l, g.box.t, g.box.r, g.box.b)), color, font, renderer))
+                }
                 removed.addAll(g.strokes)
             }
             // 3) Sonradan konan nokta/şapka/çengel → var olan harfi düzelt

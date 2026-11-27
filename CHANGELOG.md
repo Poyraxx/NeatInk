@@ -2,6 +2,11 @@
 
 All notable changes to NeatInk are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.3.2] — 2026-11-27
+
+### Fixed
+- Recognized symbols (+ − = × ÷) now match the size and position of what you drew.
+
 ## [1.3.1] — 2026-11-27
 
 ### Fixed
@@ -44,6 +49,7 @@ All notable changes to NeatInk are documented here. The format follows [Keep a C
 ### Added
 - First public release: five pressure pens, eraser, lasso, shape snapping, PDF import and annotation, solution space, cut question, PDF export, handwriting auto-fix with selectable fonts, Xiaomi pen buttons, English/Turkish UI and an update check.
 
+[1.3.2]: https://github.com/Poyraxx/NeatInk/releases/tag/v1.3.2
 [1.3.1]: https://github.com/Poyraxx/NeatInk/releases/tag/v1.3.1
 [1.3.0]: https://github.com/Poyraxx/NeatInk/releases/tag/v1.3.0
 [1.2.0]: https://github.com/Poyraxx/NeatInk/releases/tag/v1.2.0
