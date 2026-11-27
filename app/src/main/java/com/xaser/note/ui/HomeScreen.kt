@@ -44,6 +44,7 @@ import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.School
 import androidx.compose.material.icons.outlined.Calculate
+import androidx.compose.material.icons.outlined.Timer
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.outlined.TextSnippet
 import androidx.compose.material3.AlertDialog
@@ -85,6 +86,7 @@ fun HomeScreen(
     onChanged: () -> Unit,
     onOpenMistakes: () -> Unit,
     onOpenYks: () -> Unit,
+    onOpenStudy: () -> Unit,
 ) {
     val store = AppState.store
     var query by remember { mutableStateOf("") }
@@ -110,7 +112,7 @@ fun HomeScreen(
         androidx.activity.result.contract.ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
             val r = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                runCatching { ctx.contentResolver.openInputStream(uri)!!.use { com.xaser.note.data.Backup.import(store, AppState.mistakes, it, ctx.cacheDir) } }
+                runCatching { ctx.contentResolver.openInputStream(uri)!!.use { com.xaser.note.data.Backup.import(store, AppState.mistakes, it, ctx.cacheDir, AppState.study) } }
             }
             r.onSuccess { toast(L("${it.notes} not ve ${it.mistakes} hata sorusu geri yüklendi", "Restored ${it.notes} notes and ${it.mistakes} mistakes")); onChanged() }
              .onFailure { toast(L("Geri yüklenemedi: ", "Restore failed: ") + (it.message ?: "")) }
@@ -164,6 +166,17 @@ fun HomeScreen(
                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 22.dp, vertical = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically,
             ) {
+                // Çalışma: geri sayım + pomodoro + istatistik
+                Row(
+                    Modifier.clip(RoundedCornerShape(18.dp)).background(Color(0xFFE8F5E9))
+                        .combinedClickable(onClick = onOpenStudy).padding(horizontal = 14.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Outlined.Timer, null, tint = Color(0xFF2E7D32), modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    val days = Countdown.daysLeft(ctx)
+                    Text(L("Çalışma", "Study") + if (days > 0) " · " + Countdown.title(ctx) + L("'ye $days gün", ": $days days") else "", color = TextPrimary, fontSize = 15.sp)
+                }
                 // Hata defteri girişi
                 Row(
                     Modifier.clip(RoundedCornerShape(18.dp)).background(Color(0xFFFFE0B2))

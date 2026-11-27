@@ -1,5 +1,11 @@
 # NeatInk — handwriting notes & PDF study app for Android tablets
 
+[![Android CI](https://github.com/Poyraxx/NeatInk/actions/workflows/android.yml/badge.svg)](https://github.com/Poyraxx/NeatInk/actions/workflows/android.yml)
+[![Latest release](https://img.shields.io/github/v/release/Poyraxx/NeatInk)](https://github.com/Poyraxx/NeatInk/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Android 10+](https://img.shields.io/badge/Android-10%2B-3DDC84?logo=android&logoColor=white)
+![Offline first](https://img.shields.io/badge/works-offline-orange)
+
 **NeatInk** is an offline-first note-taking app for Android tablets, built for solving test questions with a stylus. It feels like the stock Xiaomi Notes app, plus the things it is missing: **PDF import and annotation** and **automatic cleanup of messy handwriting**.
 
 <p align="center">
@@ -21,6 +27,7 @@ Requirements: Android 10 (API 29) or newer. Designed for tablets; it also runs o
 - **Lasso**: move, resize, recolor, copy, cut or delete strokes, images and text.
 - **Shapes**: draw a shape and hold the pen still for a moment. It snaps to a clean line, arrow, circle, ellipse, triangle, rectangle or polygon.
 - Text boxes, images, unlimited undo/redo, and blank, lined, grid or dotted page templates.
+- **Digitize images**: when adding an image, tick *Digitize*. Text and numbers in the image become editable text boxes (on-device OCR), and its lines and shapes become pen strokes. Clean shapes snap to circles, rectangles, triangles and lines. You can keep the original image behind the result.
 - **Palm rejection**: only the pen draws and fingers scroll and zoom. Finger drawing can be turned on.
 
 ### Handwriting correction
@@ -39,6 +46,7 @@ Requirements: Android 10 (API 29) or newer. Designed for tablets; it also runs o
 - **Mistake notebook**: cut a question you got wrong with ✂ Cut question, then choose **Add to mistakes**. The question is saved *without* your solution, tagged with a subject and topic, and linked to its source page. **Review** shows open questions one by one: mark one as learned, or keep it for next time. You can also jump to the source page or solve it again in a new note.
 - **Exam mode** (⏱): a stopwatch with an optional time limit, an answer sheet (A–E or A–D), and an answer key that you can tap in or paste (`ABCDA…`). It counts correct, wrong and blank answers and calculates the **net score** (4 wrong cancel 1 right for YKS, 3 for LGS, or no penalty). There are TYT, AYT and LGS presets. One tap sends all wrong answers to the mistake notebook.
 - **Hide solutions → solve again** (👁): hide everything you wrote and solve the page again on a clean copy. When you finish, keep or discard the new attempt; your old solution comes back either way.
+- **Study screen**: an exam countdown (default: YKS 2027, TYT on 19 June 2027), a **Pomodoro** timer with subjects and breaks, a quick "how many questions?" log after each session, today's and the last 7 days' statistics, a daily streak, and a **net progress chart** built from your exam-mode results.
 - **YKS calculator** (Turkish UI only): enter correct and wrong answers per test to get nets, TYT / SAY / EA / SÖZ raw and placement scores (with diploma / OBP), an estimated ranking, and the score needed for a target ranking. It uses 2025 YKS coefficients and 2025 placement data, so results are approximate. The official result is always ÖSYM's.
 - **Backup & restore** (Settings ⚙): save all notes, PDFs and the mistake notebook to one `.zip` file. Restoring adds the missing notes and never overwrites existing ones.
 
@@ -89,9 +97,13 @@ Keep the application ID (`com.xaser.note`) and the signing key the same. Then ne
 
 ## Credits
 
-- Handwriting recognition: [Google ML Kit Digital Ink Recognition](https://developers.google.com/ml-kit/vision/digital-ink-recognition)
+- Handwriting recognition: [Google ML Kit Digital Ink Recognition](https://developers.google.com/ml-kit/vision/digital-ink-recognition); image text recognition: [ML Kit Text Recognition v2](https://developers.google.com/ml-kit/vision/text-recognition/v2)
 - Fonts (SIL Open Font License 1.1): Kalam, Caveat, Patrick Hand, Architects Daughter, Shadows Into Light Two, Sriracha and Dancing Script, from [Google Fonts](https://fonts.google.com). See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## License
 
 The app's source code is released under the [MIT License](LICENSE). Bundled fonts keep their own SIL Open Font License, and ML Kit is subject to Google's terms. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+## Contributing
+
+Contributions are welcome! Please read the [contributing guide](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md). To report a security issue, see [SECURITY.md](SECURITY.md). Release notes are in [CHANGELOG.md](CHANGELOG.md).

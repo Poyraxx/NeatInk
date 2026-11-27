@@ -20,4 +20,4 @@ Source: https://github.com/google/fonts
 ## Libraries
 
 - AndroidX / Jetpack Compose — Apache License 2.0
-- Google ML Kit Digital Ink Recognition — subject to the [ML Kit Terms of Service](https://developers.google.com/ml-kit/terms)
+- Google ML Kit Digital Ink Recognition and Text Recognition — subject to the [ML Kit Terms of Service](https://developers.google.com/ml-kit/terms)

@@ -1218,6 +1218,32 @@ class InkView(
         markDirty(page); commit(); invalidate()
     }
 
+    /** Dijitalleştirilmiş resim için kullanılacak genişlik (sayfa birimi) */
+    fun digitizeWidth(): Float = doc.pages.getOrNull(currentPage)?.width?.times(0.85f) ?: 850f
+
+    /**
+     * Resimden çıkarılan yazı ve çizgileri (ve istenirse orijinal resmi) görünen sayfanın ortasına ekler,
+     * sonra kementle seçili bırakır (taşınabilsin).
+     */
+    fun addDigitized(r: ImageDigitizer.Result, keepImage: String?) {
+        val pi = currentPage
+        val page = doc.pages[pi]
+        snapshot(page)
+        val cx = docX(width / 2f).coerceIn(0f, page.width); val cy = (docY(height / 2f) - pageTops[pi]).coerceIn(0f, page.height)
+        val ox = (cx - r.width / 2).coerceAtLeast(0f); val oy = (cy - r.height / 2).coerceAtLeast(0f)
+        val img = keepImage?.let { ImageItem(it, ox, oy, r.width, r.height) }
+        val strokes = r.strokes.map { s -> s.copy().also { c -> var i = 0; while (i < c.points.size) { c.points[i] += ox; c.points[i + 1] += oy; i += 3 } } }
+        val texts = r.texts.map { t -> t.copy().also { it.x += ox; it.y += oy } }
+        if (hideInk) { strokes.forEach { it.retry = true }; texts.forEach { it.retry = true } }
+        img?.let { page.images.add(it) }
+        page.strokes.addAll(strokes); page.texts.addAll(texts)
+        markDirty(page); commit()
+        tool = Tool.LASSO
+        selection = Selection(pi).apply { this.strokes.addAll(strokes); this.texts.addAll(texts); img?.let { this.images.add(it) } }
+        updateSelBounds(); listener?.onSelectionChanged(selection)
+        invalidate()
+    }
+
     // ---- otomatik düzeltme ----
     private fun flushAuto() {
         removeCallbacks(autoRunnable)

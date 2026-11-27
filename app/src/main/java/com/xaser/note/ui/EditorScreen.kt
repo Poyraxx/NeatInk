@@ -84,6 +84,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -153,6 +154,8 @@ fun EditorScreen(meta: NoteMeta, initialPage: Int = -1, onBack: () -> Unit, onOp
     var examOpen by remember { mutableStateOf(false) }
     var retryEndDialog by remember { mutableStateOf(false) }
     var mistakeCrop by remember { mutableStateOf<Pair<Int, RectF>?>(null) }
+    /** Eklenmeyi bekleyen resim: dosya adı, genişlik, yükseklik */
+    var pendingImage by remember { mutableStateOf<Triple<String, Int, Int>?>(null) }
     var saveJob by remember { mutableStateOf<Job?>(null) }
 
     val pdfCache = remember {
@@ -285,7 +288,7 @@ fun EditorScreen(meta: NoteMeta, initialPage: Int = -1, onBack: () -> Unit, onOp
                     Triple(name, o.outWidth, o.outHeight)
                 }.getOrNull()
             }
-            if (res != null) { view.tool = Tool.LASSO; view.addImage(res.first, res.second, res.third) } else toast(L("Resim eklenemedi", "Could not add image"))
+            if (res != null) pendingImage = res else toast(L("Resim eklenemedi", "Could not add image"))
         }
     }
 
@@ -492,6 +495,41 @@ fun EditorScreen(meta: NoteMeta, initialPage: Int = -1, onBack: () -> Unit, onOp
     }
 
     // ================= Diyaloglar =================
+    pendingImage?.let { (name, bw, bh) ->
+        ImageInsertDialog(
+            file = store.imageFile(meta.id, name),
+            prefs = prefs,
+            onCancel = { store.imageFile(meta.id, name).delete(); pendingImage = null },
+        ) { digitize, withText, withShapes, keepImage ->
+            pendingImage = null
+            if (!digitize) { view.tool = Tool.LASSO; view.addImage(name, bw, bh); return@ImageInsertDialog }
+            busy = L("Resim dijitale çevriliyor…", "Digitizing image…")
+            scope.launch {
+                val file = store.imageFile(meta.id, name)
+                val result = runCatching {
+                    val bmp = withContext(Dispatchers.IO) {
+                        // EXIF yönünü uygular (telefon fotoğrafları yan gelmesin)
+                        android.graphics.ImageDecoder.decodeBitmap(android.graphics.ImageDecoder.createSource(file)) { d, _, _ ->
+                            d.allocator = android.graphics.ImageDecoder.ALLOCATOR_SOFTWARE
+                        }
+                    }
+                    com.xaser.note.ink.ImageDigitizer.digitize(bmp, view.digitizeWidth(), view.penColors[PenType.BALLPOINT]!!,
+                        NoteFonts.PLAIN, withText, withShapes)
+                }.getOrNull()
+                busy = null
+                when {
+                    result == null -> { toast(L("Dijitale çevrilemedi, resim olarak eklendi", "Could not digitize, added as image")); view.addImage(name, bw, bh) }
+                    result.isEmpty -> { toast(L("Resimde yazı veya şekil bulunamadı, resim olarak eklendi", "No text or shapes found, added as image")); view.addImage(name, bw, bh) }
+                    else -> {
+                        view.addDigitized(result, if (keepImage) name else null)
+                        if (!keepImage) file.delete()
+                        toast(L("${result.texts.size} satır yazı, ${result.strokes.size} çizgi/şekil eklendi", "Added ${result.texts.size} text lines, ${result.strokes.size} lines/shapes"))
+                    }
+                }
+            }
+        }
+    }
+
     mistakeCrop?.let { (pi, rect) ->
         SubjectDialog(L("Hata defterine ekle", "Add to mistakes"), prefs.getString("lastSubject", "") ?: "", "", { mistakeCrop = null }) { subject, topic ->
             // Sorunun temiz hali (senin çözümün olmadan)
@@ -801,6 +839,61 @@ fun FontPickerList(selected: String, title: String, onPick: (String) -> Unit) {
                     if (on) Icon(Icons.Outlined.Check, null, tint = AccentDark)
                 }
             }
+        }
+    }
+}
+
+
+/** Resim eklerken: "Dijitale çevir" seçeneği */
+@Composable
+private fun ImageInsertDialog(
+    file: File, prefs: android.content.SharedPreferences, onCancel: () -> Unit,
+    onOk: (digitize: Boolean, withText: Boolean, withShapes: Boolean, keepImage: Boolean) -> Unit,
+) {
+    val preview = remember(file) {
+        runCatching { BitmapFactory.decodeFile(file.absolutePath, BitmapFactory.Options().apply { inSampleSize = 4 }) }.getOrNull()
+    }
+    var digitize by remember { mutableStateOf(prefs.getBoolean("dig", false)) }
+    var withText by remember { mutableStateOf(prefs.getBoolean("digText", true)) }
+    var withShapes by remember { mutableStateOf(prefs.getBoolean("digShapes", true)) }
+    var keep by remember { mutableStateOf(prefs.getBoolean("digKeep", false)) }
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text(L("Resim ekle", "Add image")) },
+        text = {
+            Column {
+                preview?.let {
+                    androidx.compose.foundation.Image(it.asImageBitmap(), null, contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                        modifier = Modifier.fillMaxWidth().height(180.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFF2F2F2)))
+                    Spacer(Modifier.height(10.dp))
+                }
+                CheckRow(digitize, L("Dijitale çevir", "Digitize"), L("Yazılar, rakamlar ve şekiller düzenlenebilir hale gelir (internetsiz)",
+                    "Text, numbers and shapes become editable (works offline)")) { digitize = it }
+                if (digitize) Column(Modifier.padding(start = 28.dp)) {
+                    CheckRow(withText, L("Yazılar ve rakamlar", "Text and numbers"), null) { withText = it }
+                    CheckRow(withShapes, L("Şekiller ve çizgiler", "Shapes and lines"), null) { withShapes = it }
+                    CheckRow(keep, L("Orijinal resmi arkada tut", "Keep the original image behind"), null) { keep = it }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton({
+                prefs.edit().putBoolean("dig", digitize).putBoolean("digText", withText).putBoolean("digShapes", withShapes).putBoolean("digKeep", keep).apply()
+                onOk(digitize && (withText || withShapes), withText, withShapes, keep)
+            }) { Text(L("Ekle", "Add"), color = Accent) }
+        },
+        dismissButton = { TextButton(onCancel) { Text(L("İptal", "Cancel")) } },
+    )
+}
+
+@Composable
+private fun CheckRow(checked: Boolean, title: String, sub: String?, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { onChange(!checked) }.padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        androidx.compose.material3.Checkbox(checked, onChange, colors = androidx.compose.material3.CheckboxDefaults.colors(checkedColor = Accent))
+        Column {
+            Text(title, fontSize = 16.sp)
+            if (sub != null) Text(sub, fontSize = 12.sp, color = TextSecondary)
         }
     }
 }

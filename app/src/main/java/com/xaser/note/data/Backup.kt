@@ -30,7 +30,7 @@ object Backup {
 
     class Result(val notes: Int, val mistakes: Int)
 
-    fun import(store: NoteStore, mistakes: MistakeStore, input: InputStream, tempDir: File): Result {
+    fun import(store: NoteStore, mistakes: MistakeStore, input: InputStream, tempDir: File, study: StudyStore? = null): Result {
         val tmp = File(tempDir, "restore_" + System.currentTimeMillis()).apply { mkdirs() }
         try {
             val canonRoot = tmp.canonicalPath + File.separator
@@ -82,6 +82,7 @@ object Backup {
                 mistakes.items.sortByDescending { it.created }
                 mistakes.save()
             }
+            File(tmp, "_study/study.json").takeIf { it.exists() }?.let { f -> study?.merge(StudyStore.readFile(f)) }
             return Result(addedNotes, addedMistakes)
         } finally {
             tmp.deleteRecursively()

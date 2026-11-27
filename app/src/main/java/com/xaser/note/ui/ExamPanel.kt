@@ -128,6 +128,13 @@ class ExamSession(
             (0 until a.length()).map { fromJson(a.getJSONObject(it)) }.toMutableList()
         }.getOrElse { mutableListOf() }
 
+        /** Tüm notlardaki denemeler (not başlığıyla) — net gelişim grafiği için */
+        fun loadAll(store: com.xaser.note.data.NoteStore): List<Pair<String, ExamSession>> =
+            store.notes.flatMap { n ->
+                val f = File(File(store.root, n.id), "exams.json")
+                if (!f.exists()) emptyList() else load(f.parentFile!!).map { n.title to it }
+            }
+
         fun save(dir: File, list: List<ExamSession>) {
             runCatching { File(dir, "exams.json").writeText(JSONArray().apply { list.forEach { put(it.toJson()) } }.toString()) }
         }

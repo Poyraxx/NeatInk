@@ -85,6 +85,7 @@ private fun App(incomingPdf: Uri?, consumeIncoming: () -> Unit) {
     var pendingFolder by remember { mutableStateOf("") }
     var mistakesOpen by remember { mutableStateOf(false) }
     var yksOpen by remember { mutableStateOf(false) }
+    var studyOpen by remember { mutableStateOf(false) }
     /** Not açılınca kaydırılacak sayfa (hata defterinden "kaynağa git") */
     var openPage by remember { mutableIntStateOf(-1) }
     /** Not kapanınca hata defterine geri dön */
@@ -118,7 +119,9 @@ private fun App(incomingPdf: Uri?, consumeIncoming: () -> Unit) {
     }
 
     val current = open
-    if (current == null && yksOpen) {
+    if (current == null && studyOpen) {
+        com.xaser.note.ui.StudyScreen(onBack = { studyOpen = false; version++ })
+    } else if (current == null && yksOpen) {
         com.xaser.note.ui.YksScreen(onBack = { yksOpen = false })
     } else if (current == null && mistakesOpen) {
         com.xaser.note.ui.MistakeScreen(
@@ -154,6 +157,7 @@ private fun App(incomingPdf: Uri?, consumeIncoming: () -> Unit) {
             onChanged = { version++ },
             onOpenMistakes = { mistakesOpen = true },
             onOpenYks = { yksOpen = true },
+            onOpenStudy = { studyOpen = true },
         )
     } else key(current.id) {
         val back: () -> Unit = {

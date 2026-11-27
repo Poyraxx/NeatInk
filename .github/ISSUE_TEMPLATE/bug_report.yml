@@ -1,0 +1,49 @@
+name: Bug report
+description: Something does not work as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "Thanks for reporting! Please fill in as much as you can. Türkçe de yazabilirsiniz."
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a PDF note
+        2. Select the lasso tool
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: NeatInk version
+      description: Settings on the home screen shows the version.
+      placeholder: "1.3.0"
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android version
+      placeholder: "Redmi Pad 2 Pro, HyperOS 2, Android 16"
+    validations:
+      required: true
+  - type: input
+    id: pen
+    attributes:
+      label: Stylus (if relevant)
+      placeholder: "Redmi Smart Pen 1S"
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots or screen recording
+      description: Drag and drop files here. Please do not share notes that contain personal information.
