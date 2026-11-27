@@ -84,6 +84,7 @@ private fun App(incomingPdf: Uri?, consumeIncoming: () -> Unit) {
     var version by remember { mutableIntStateOf(0) }
     var pendingFolder by remember { mutableStateOf("") }
     var mistakesOpen by remember { mutableStateOf(false) }
+    var yksOpen by remember { mutableStateOf(false) }
     /** Not açılınca kaydırılacak sayfa (hata defterinden "kaynağa git") */
     var openPage by remember { mutableIntStateOf(-1) }
     /** Not kapanınca hata defterine geri dön */
@@ -117,7 +118,9 @@ private fun App(incomingPdf: Uri?, consumeIncoming: () -> Unit) {
     }
 
     val current = open
-    if (current == null && mistakesOpen) {
+    if (current == null && yksOpen) {
+        com.xaser.note.ui.YksScreen(onBack = { yksOpen = false })
+    } else if (current == null && mistakesOpen) {
         com.xaser.note.ui.MistakeScreen(
             onBack = { mistakesOpen = false; version++ },
             onOpenSource = { id, page ->
@@ -150,6 +153,7 @@ private fun App(incomingPdf: Uri?, consumeIncoming: () -> Unit) {
             onImportPdf = { f -> pendingFolder = f; pickPdf.launch(arrayOf("application/pdf")) },
             onChanged = { version++ },
             onOpenMistakes = { mistakesOpen = true },
+            onOpenYks = { yksOpen = true },
         )
     } else key(current.id) {
         val back: () -> Unit = {

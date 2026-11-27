@@ -43,6 +43,7 @@ import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.School
+import androidx.compose.material.icons.outlined.Calculate
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.outlined.TextSnippet
 import androidx.compose.material3.AlertDialog
@@ -83,6 +84,7 @@ fun HomeScreen(
     onImportPdf: (folder: String) -> Unit,
     onChanged: () -> Unit,
     onOpenMistakes: () -> Unit,
+    onOpenYks: () -> Unit,
 ) {
     val store = AppState.store
     var query by remember { mutableStateOf("") }
@@ -172,6 +174,16 @@ fun HomeScreen(
                     Spacer(Modifier.width(6.dp))
                     val open = AppState.mistakes.openCount
                     Text(L("Hata Defteri", "Mistakes") + if (open > 0) " ($open)" else "", color = TextPrimary, fontSize = 15.sp)
+                }
+                // YKS net / puan / sıralama (yalnızca Türkçe arayüzde)
+                if (!com.xaser.note.Lang.isEnglish) Row(
+                    Modifier.clip(RoundedCornerShape(18.dp)).background(Color(0xFFE3F2FD))
+                        .combinedClickable(onClick = onOpenYks).padding(horizontal = 14.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Outlined.Calculate, null, tint = Color(0xFF1565C0), modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("YKS Hesaplama", color = TextPrimary, fontSize = 15.sp)
                 }
                 FolderChip(L("Tümü", "All"), folder.isEmpty()) { folder = "" }
                 store.folders.forEach { f -> FolderChip(f, folder == f) { folder = f } }
